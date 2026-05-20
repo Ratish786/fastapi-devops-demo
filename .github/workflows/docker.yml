@@ -34,7 +34,7 @@ jobs:
           script: |
             sudo docker pull biku0786/fastapi-devops-demo:latest
 
-            CURRENT_PORT=$(grep proxy_pass /etc/nginx/sites-available/default | grep -o '[0-9]\+')
+            CURRENT_PORT=$(grep proxy_pass /etc/nginx/sites-available/default | sed -E 's/.*:([0-9]+);/\1/')
 
             if [ "$CURRENT_PORT" = "8000" ]; then
               NEW_PORT=8001
