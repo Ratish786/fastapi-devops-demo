@@ -1,4 +1,4 @@
-name: Build, Push and Deploy
+name: Build, Push and Deploy Blue Green
 
 on:
   push:
@@ -25,7 +25,7 @@ jobs:
       - name: Push Docker image
         run: docker push biku0786/fastapi-devops-demo:latest
 
-      - name: Deploy to AWS
+      - name: Deploy Blue Green
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.AWS_HOST }}
@@ -33,14 +33,24 @@ jobs:
           key: ${{ secrets.AWS_SSH_KEY }}
           script: |
             sudo docker pull biku0786/fastapi-devops-demo:latest
-            sudo docker stop fastapi-app || true
-            sudo docker rm fastapi-app || true
+
+            sudo docker rm -f fastapi-green || true
+
             sudo docker run -d \
-              --name fastapi-app \
-              -p 8000:8000 \
+              --name fastapi-green \
+              -p 8001:8000 \
               -e DB_CONNECTION=postgresql+psycopg2://postgres:ratish0786@postgres-db:5432/mydb \
               -e SECRET_KEY=mysecretkey \
               -e ALGORITHM=HS256 \
               -e EXP_TIME=30 \
               --link postgres-db \
               biku0786/fastapi-devops-demo:latest
+
+            sleep 10
+
+            curl -f http://localhost:8001/health || exit 1
+
+            sudo sed -i 's/8000/8001/g' /etc/nginx/sites-available/default
+            sudo systemctl reload nginx
+
+            sudo docker rm -f fastapi-app || true
