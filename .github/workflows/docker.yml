@@ -1,4 +1,4 @@
-name: Build and Push Docker Image
+name: Build, Push and Deploy
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
       - main
 
 jobs:
-  docker:
+  deploy:
     runs-on: ubuntu-latest
 
     steps:
@@ -19,8 +19,28 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Build Docker Image
+      - name: Build Docker image
         run: docker build -t biku0786/fastapi-devops-demo:latest .
 
-      - name: Push Docker Image
+      - name: Push Docker image
         run: docker push biku0786/fastapi-devops-demo:latest
+
+      - name: Deploy to AWS
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.AWS_HOST }}
+          username: ${{ secrets.AWS_USER }}
+          key: ${{ secrets.AWS_SSH_KEY }}
+          script: |
+            sudo docker pull biku0786/fastapi-devops-demo:latest
+            sudo docker stop fastapi-app || true
+            sudo docker rm fastapi-app || true
+            sudo docker run -d \
+              --name fastapi-app \
+              -p 8000:8000 \
+              -e DB_CONNECTION=postgresql+psycopg2://postgres:ratish0786@postgres-db:5432/mydb \
+              -e SECRET_KEY=mysecretkey \
+              -e ALGORITHM=HS256 \
+              -e EXP_TIME=30 \
+              --link postgres-db \
+              biku0786/fastapi-devops-demo:latest
