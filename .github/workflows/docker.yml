@@ -25,7 +25,7 @@ jobs:
       - name: Push Docker image
         run: docker push biku0786/fastapi-devops-demo:latest
 
-      - name: Deploy Blue Green
+      - name: Deploy Smart Blue Green
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.AWS_HOST }}
@@ -34,11 +34,21 @@ jobs:
           script: |
             sudo docker pull biku0786/fastapi-devops-demo:latest
 
-            sudo docker rm -f fastapi-green || true
+            CURRENT_PORT=$(grep proxy_pass /etc/nginx/sites-available/default | grep -o '[0-9]\+')
+
+            if [ "$CURRENT_PORT" = "8000" ]; then
+              NEW_PORT=8001
+              NEW_NAME=fastapi-green
+            else
+              NEW_PORT=8000
+              NEW_NAME=fastapi-blue
+            fi
+
+            sudo docker rm -f $NEW_NAME || true
 
             sudo docker run -d \
-              --name fastapi-green \
-              -p 8001:8000 \
+              --name $NEW_NAME \
+              -p $NEW_PORT:8000 \
               -e DB_CONNECTION=postgresql+psycopg2://postgres:ratish0786@postgres-db:5432/mydb \
               -e SECRET_KEY=mysecretkey \
               -e ALGORITHM=HS256 \
@@ -48,9 +58,7 @@ jobs:
 
             sleep 10
 
-            curl -f http://localhost:8001/health || exit 1
+            curl -f http://localhost:$NEW_PORT/health || exit 1
 
-            sudo sed -i 's/8000/8001/g' /etc/nginx/sites-available/default
+            sudo sed -i "s/$CURRENT_PORT/$NEW_PORT/g" /etc/nginx/sites-available/default
             sudo systemctl reload nginx
-
-            sudo docker rm -f fastapi-app || true
