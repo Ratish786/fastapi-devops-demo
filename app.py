@@ -5,7 +5,7 @@ from model import model
 
 Base.metadata.create_all(engine)
 
-app = FastAPI(title="Ratish DevOps CI/CD API")
+app = FastAPI(title="Ratish DevOps CI/CD API's")
 
 @app.get("/health")
 def health():
