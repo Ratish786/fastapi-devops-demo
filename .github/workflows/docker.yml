@@ -1,3 +1,4 @@
+# self healing enabled
 name: Build, Push and Deploy Blue Green
 
 on:
