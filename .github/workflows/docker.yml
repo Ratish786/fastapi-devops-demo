@@ -35,6 +35,16 @@ jobs:
           script: |
             sudo docker pull biku0786/fastapi-devops-demo:latest
 
+            # Run Alembic Migration
+            sudo docker run --rm \
+             --network app-network \
+             -e DB_CONNECTION=postgresql+psycopg2://postgres:ratish0786@postgres-db:5432/mydb_alembic \
+             -e SECRET_KEY=mysecretkey \
+             -e ALGORITHM=HS256 \
+             -e EXP_TIME=30 \
+             biku0786/fastapi-devops-demo:latest \
+             alembic upgrade head
+
             CURRENT_PORT=$(grep proxy_pass /etc/nginx/sites-available/default | sed -E 's/.*:([0-9]+);/\1/')
 
             if [ "$CURRENT_PORT" = "8000" ]; then
@@ -51,11 +61,11 @@ jobs:
               --restart unless-stopped \
               --name $NEW_NAME \
               -p $NEW_PORT:8000 \
-              -e DB_CONNECTION=postgresql+psycopg2://postgres:ratish0786@postgres-db:5432/mydb \
+              -e DB_CONNECTION=postgresql+psycopg2://postgres:ratish0786@postgres-db:5432/mydb_alembic \
               -e SECRET_KEY=mysecretkey \
               -e ALGORITHM=HS256 \
               -e EXP_TIME=30 \
-              --link postgres-db \
+              --network app-network \
               biku0786/fastapi-devops-demo:latest
 
             sleep 10
